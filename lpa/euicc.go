@@ -112,25 +112,25 @@ func New(opts *Options) (*Client, error) {
 	}
 	c.APDU = c.transmitter
 
-        if opts.InternalProxy == "" {
-            c.HTTP = &http.Client{
-                Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
-		AdminProtocolVersion: opts.AdminProtocolVersion,
-            }
-        } else {
-	    proxyURL, err := url.Parse(opts.InternalProxy)
-            if err != nil {
-                c.HTTP = &http.Client{
-                    Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
-		    AdminProtocolVersion: opts.AdminProtocolVersion,
-                }
-            } else {
-	        c.HTTP = &http.Client{
-		    Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, proxyURL),
-		    AdminProtocolVersion: opts.AdminProtocolVersion,
-                }
-            }
-        }
+	if opts.InternalProxy == "" {
+		c.HTTP = &http.Client{
+			Client:               driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
+			AdminProtocolVersion: opts.AdminProtocolVersion,
+		}
+	} else {
+		proxyURL, err := url.Parse(opts.InternalProxy)
+		if err != nil {
+			c.HTTP = &http.Client{
+				Client:               driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
+				AdminProtocolVersion: opts.AdminProtocolVersion,
+			}
+		} else {
+			c.HTTP = &http.Client{
+				Client:               driver.NewHTTPClient(opts.Logger, opts.Timeout, proxyURL),
+				AdminProtocolVersion: opts.AdminProtocolVersion,
+			}
+		}
+	}
 
 	return &c, nil
 }

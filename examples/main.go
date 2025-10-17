@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
 	"net/url"
-        "bytes"
 
 	"github.com/damonto/euicc-go/driver/qmi"
 	"github.com/damonto/euicc-go/lpa"
@@ -43,7 +43,7 @@ func main() {
 	// ch.SetReader(reader[0])
 
 	client, err := lpa.New(&lpa.Options{
-		Channel: ch,
+		Channel:       ch,
 		InternalProxy: "http://192.168.11.199:8888",
 	})
 	if err != nil {
@@ -58,10 +58,10 @@ func main() {
 
 	// testDiscovery(client)
 
-        //testDisableProfile(client)
-        //testDeleteProfile(client)
-        //testSendAllNotifications(client)
-        //testDownload(client)
+	//testDisableProfile(client)
+	//testDeleteProfile(client)
+	//testSendAllNotifications(client)
+	//testDownload(client)
 }
 
 func testEID(client *lpa.Client) {
@@ -176,31 +176,31 @@ func testDiscovery(client *lpa.Client) {
 }
 
 func testDeleteProfile(client *lpa.Client) {
-        id, _ := sgp22.NewICCID("8944476500006628536")
-        if err := client.DeleteProfile(id); err != nil {
-                fmt.Printf("Failed to delete profile: %v\n", err)
-        } else {
-                fmt.Println("Profile deleted successfully")
-        }
+	id, _ := sgp22.NewICCID("8944476500006628536")
+	if err := client.DeleteProfile(id); err != nil {
+		fmt.Printf("Failed to delete profile: %v\n", err)
+	} else {
+		fmt.Println("Profile deleted successfully")
+	}
 }
 
 func testSendAllNotifications(client *lpa.Client) {
-        notifications, err := client.ListNotification()
-        if err != nil {
-                panic(err)
-        }
+	notifications, err := client.ListNotification()
+	if err != nil {
+		panic(err)
+	}
 
-        // id, _ := sgp22.NewICCID("8944476500001224158")
-        id, _ := sgp22.NewICCID("8944476500006628536")
+	// id, _ := sgp22.NewICCID("8944476500001224158")
+	id, _ := sgp22.NewICCID("8944476500006628536")
 
-        for _, notification := range notifications {
+	for _, notification := range notifications {
 
-            if bytes.Equal(notification.ICCID, id) {
+		if bytes.Equal(notification.ICCID, id) {
 
-                fmt.Printf("Sequence: %d, ICCID: %s, Operation: %d\n",
-                        notification.SequenceNumber, notification.ICCID, notification.ProfileManagementOperation)
+			fmt.Printf("Sequence: %d, ICCID: %s, Operation: %d\n",
+				notification.SequenceNumber, notification.ICCID, notification.ProfileManagementOperation)
 
-                testSendNotification(client, notification.SequenceNumber)
-            }
-        }
+			testSendNotification(client, notification.SequenceNumber)
+		}
+	}
 }
