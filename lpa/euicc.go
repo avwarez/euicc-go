@@ -115,19 +115,19 @@ func New(opts *Options) (*Client, error) {
         if opts.InternalProxy == "" {
             c.HTTP = &http.Client{
                 Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
-                AdminProtocol: fmt.Sprintf("gsma/rsp/v%s", opts.AdminProtocolVersion),
+		AdminProtocolVersion: opts.AdminProtocolVersion,
             }
         } else {
 	    proxyURL, err := url.Parse(opts.InternalProxy)
             if err != nil {
                 c.HTTP = &http.Client{
                     Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, nil),
-                    AdminProtocol: fmt.Sprintf("gsma/rsp/v%s", opts.AdminProtocolVersion),
+		    AdminProtocolVersion: opts.AdminProtocolVersion,
                 }
             } else {
 	        c.HTTP = &http.Client{
 		    Client:        driver.NewHTTPClient(opts.Logger, opts.Timeout, proxyURL),
-		    AdminProtocol: fmt.Sprintf("gsma/rsp/v%s", opts.AdminProtocolVersion),
+		    AdminProtocolVersion: opts.AdminProtocolVersion,
                 }
             }
         }

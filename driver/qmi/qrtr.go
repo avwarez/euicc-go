@@ -69,6 +69,13 @@ type Service struct {
 	Port     uint32
 }
 
+// QRTRConn represents a QRTR connection
+type QRTRConn struct {
+	fd          int
+	Service     *Service
+	readTimeout time.Duration
+}
+
 // QRTR implements the apdu.SmartCardChannel interface using QRTR protocol
 type QRTR struct {
 	conn *QRTRConn
@@ -143,18 +150,12 @@ func (c *QRTR) Disconnect() error {
 	return c.conn.Close()
 }
 
-type QRTRConn struct {
-	fd           int
-	Service      *Service
-	readDeadline time.Duration
-}
-
 func newQRTRConn() (*QRTRConn, error) {
 	fd, err := unix.Socket(unix.AF_QIPCRTR, unix.SOCK_DGRAM, 0)
 	if err != nil {
 		return nil, fmt.Errorf("create QRTR socket: %w", err)
 	}
-	return &QRTRConn{fd: fd, readDeadline: 30 * time.Second}, nil
+	return &QRTRConn{fd: fd, readTimeout: 30 * time.Second}, nil
 }
 
 func (c *QRTRConn) Sendto(dest *SockAddr, data []byte) (int, error) {
@@ -196,7 +197,7 @@ func (c *QRTRConn) Recv(b []byte) (int, *SockAddr, error) {
 		return 0, nil, err
 	}
 
-	timeout := time.Now().Add(c.readDeadline)
+	timeout := time.Now().Add(c.readTimeout)
 	for time.Now().Before(timeout) {
 		n, from, err := c.Recvfrom(b)
 		if err != nil {
@@ -263,7 +264,7 @@ func (c *QRTRConn) SetDeadline(t time.Time) error {
 }
 
 func (c *QRTRConn) SetReadDeadline(t time.Time) error {
-	c.readDeadline = c.toTimeDuration(t)
+	c.readTimeout = c.toTimeDuration(t)
 	return nil
 }
 
