@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/damonto/euicc-go/driver/qmi"
+	"github.com/damonto/euicc-go/driver/localnet"
 	"github.com/damonto/euicc-go/lpa"
 	sgp22 "github.com/damonto/euicc-go/v2"
 )
@@ -20,7 +20,8 @@ func main() {
 	// 	panic(err)
 	// }
 	// ch, err := qmi.New("/dev/cdc-wdm0", 1)
-	ch, err := qmi.NewQRTR(2)
+	ch, err := localnet.NewUDP("192.168.11.100:8080")
+	//ch, err := qmi.NewQRTR(2)
 	if err != nil {
 		panic(err)
 	}
@@ -43,8 +44,8 @@ func main() {
 	// ch.SetReader(reader[0])
 
 	client, err := lpa.New(&lpa.Options{
-		Channel:       ch,
-		InternalProxy: "http://192.168.11.199:8888",
+		Channel: ch,
+		//InternalProxy: "http://192.168.11.199:8888",
 	})
 	if err != nil {
 		fmt.Printf("Failed to create LPA client: %v\n", err)
@@ -61,6 +62,7 @@ func main() {
 	//testDisableProfile(client)
 	//testDeleteProfile(client)
 	//testSendAllNotifications(client)
+	testListNotifications(client)
 	//testDownload(client)
 }
 
