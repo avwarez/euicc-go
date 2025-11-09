@@ -116,6 +116,18 @@ outer:
 			break
 		}
 
+		fmt.Printf("\n=== DEBUG PACKET ===\n")
+		fmt.Printf("Cmd: %s\n", pcRcv.Cmd)
+		fmt.Printf("Body len: %d\n", len(pcRcv.Body))
+		fmt.Printf("Body hex: %X\n", pcRcv.Body)
+		if len(pcRcv.Body) > 0 {
+			fmt.Printf("Body[0]: 0x%02X\n", pcRcv.Body[0])
+		}
+		if len(pcRcv.Body) > 4 {
+			fmt.Printf("Body[4] (presumed len): 0x%02X (%d)\n", pcRcv.Body[4], pcRcv.Body[4])
+		}
+		fmt.Printf("==================\n\n")
+
 		fmt.Printf("Analisi comando %s \n", pcRcv.Cmd)
 		switch pcRcv.Cmd {
 		case "exit":
@@ -123,24 +135,72 @@ outer:
 			break outer
 
 		case "transmit":
-			len := pcRcv.Body[4]
+			fmt.Printf("DEBUG: Body ricevuto (len=%d): %X\n", len(pcRcv.Body), pcRcv.Body)
 
-			fmt.Printf("Transmitting raw: %s\n", fmt.Sprintf("%X", pcRcv.Body[5:5+len]))
-			byteArrayResponse, err := transmitter.TransmitRaw(pcRcv.Body[5 : 5+len])
+			if len(pcRcv.Body) == 0 {
+				fmt.Println("ERROR: Body vuoto")
+				pcSnd := localnet.PacketCmd{
+					Cmd:  "response",
+					Body: nil,
+					Err:  fmt.Errorf("empty body"),
+				}
+				byteArrayResponse, _ := pcSnd.Encode()
+				conn.WriteToUDP(byteArrayResponse, remoteAddr)
+				continue
+			}
+
+			var rawCommand []byte
+
+			// Controlla se c'è un header con lunghezza
+			if len(pcRcv.Body) >= 5 {
+				lenByte := pcRcv.Body[4]
+
+				if lenByte == 0xFE || lenByte == 0xFF {
+					// Lunghezza estesa: usa tutto il body dal byte 5 in poi
+					fmt.Printf("Lunghezza estesa (0x%02X), uso tutto il body dal byte 5\n", lenByte)
+					rawCommand = pcRcv.Body[5:]
+				} else {
+					// Lunghezza normale
+					dataLen := int(lenByte)
+					if len(pcRcv.Body) >= 5+dataLen {
+						rawCommand = pcRcv.Body[5 : 5+dataLen]
+					} else {
+						// Usa quello che c'è disponibile
+						fmt.Printf("WARNING: Lunghezza dichiarata (%d) > disponibile, uso tutto\n", dataLen)
+						rawCommand = pcRcv.Body[5:]
+					}
+				}
+			} else {
+				// Body troppo corto, usa tutto
+				fmt.Println("WARNING: Body troppo corto per header, uso tutto")
+				rawCommand = pcRcv.Body
+			}
+
+			fmt.Printf("Transmitting raw (%d bytes): %s\n", len(rawCommand), fmt.Sprintf("%X", rawCommand))
+			byteArrayResponse, err := transmitter.TransmitRaw(rawCommand)
 			if err != nil {
 				fmt.Println("Error using lib raw transport:", err)
+				// In caso di errore, crea una risposta di errore appropriata
+				// Status word 6F00 = errore generico
+				byteArrayResponse = []byte{0x6F, 0x00}
 			} else {
 				// pezza brutta brutta
 				byteArrayResponse = append(byteArrayResponse, 0x90, 0x00)
 				// pezza brutta brutta
 			}
-			resp := apdu.Response(byteArrayResponse)
 
-			fmt.Printf("SW:      0x%04X\n", resp.SW())
-			fmt.Printf("SW1:     0x%02X\n", resp.SW1())
-			fmt.Printf("SW2:     0x%02X\n", resp.SW2())
-			fmt.Printf("OK?      %v\n", resp.OK())
-			fmt.Printf("HasMore? %v\n", resp.HasMore())
+			// Controlla che la risposta abbia almeno 2 byte prima di processarla
+			if len(byteArrayResponse) >= 2 {
+				resp := apdu.Response(byteArrayResponse)
+				fmt.Printf("SW:      0x%04X\n", resp.SW())
+				fmt.Printf("SW1:     0x%02X\n", resp.SW1())
+				fmt.Printf("SW2:     0x%02X\n", resp.SW2())
+				fmt.Printf("OK?      %v\n", resp.OK())
+				fmt.Printf("HasMore? %v\n", resp.HasMore())
+			} else {
+				fmt.Printf("WARNING: Risposta troppo corta (%d bytes)\n", len(byteArrayResponse))
+			}
+
 			fmt.Printf("Receiving raw: %s\n", fmt.Sprintf("%X", byteArrayResponse))
 
 			pcSnd := localnet.PacketCmd{
