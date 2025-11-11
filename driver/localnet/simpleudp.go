@@ -1,10 +1,12 @@
 package localnet
 
 import (
+	"encoding/gob"
 	"fmt"
 	"net"
 
 	"github.com/damonto/euicc-go/apdu"
+	"github.com/damonto/euicc-go/driver/qmi/core"
 )
 
 type NetContext struct {
@@ -29,38 +31,56 @@ func (c *NetContext) Connect() error {
 		return fmt.Errorf("error establishing connection with %s %w", c.rAddr, err)
 	}
 	c.conn = conn
-	return nil
+
+	_, err = zzz(c.conn, "connect", nil)
+	return err
 }
 
 func (c *NetContext) Disconnect() error {
+	var err error
 	if c.conn != nil {
-		err := c.conn.Close()
+		_, err = zzz(c.conn, "disconnect", nil)
+		c.conn.Close()
 		c.conn = nil
-		return fmt.Errorf("error closing connection %w", err)
 	}
-	return nil
+	return err
 }
 
 func (c *NetContext) Transmit(command []byte) ([]byte, error) {
+	return zzz(c.conn, "transmit", command)
+}
+
+func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
+	gob.Register(core.QMIError(0))
+	bb, er := zzz(c.conn, "openlogicalchannel", AID)
+	return bb[0], er
+}
+
+func (c *NetContext) CloseLogicalChannel(channel byte) error {
+	_, er := zzz(c.conn, "closelogicalchannel", []byte{channel})
+	return er
+}
+
+func zzz(cn *net.UDPConn, cm string, bd []byte) (by []byte, er error) {
 
 	pcSnd := PacketCmd{
-		Cmd:  "transmit",
-		Body: command,
+		Cmd:  cm,
+		Body: bd,
 		Err:  nil,
 	}
 
 	byteToTransmit, err1 := pcSnd.Encode()
 	if err1 != nil {
-		return nil, fmt.Errorf("error encoding message %X %w", command, err1)
+		return nil, fmt.Errorf("error encoding message %X %w", cm, err1)
 	}
 
-	_, err2 := c.conn.Write(byteToTransmit)
+	_, err2 := cn.Write(byteToTransmit)
 	if err2 != nil {
-		return nil, fmt.Errorf("error sending message %X %w", command, err2)
+		return nil, fmt.Errorf("error sending message %X %w", cm, err2)
 	}
 
 	buffer := make([]byte, 512)
-	n, _, err3 := c.conn.ReadFromUDP(buffer)
+	n, _, err3 := cn.ReadFromUDP(buffer)
 	if err3 != nil {
 		return nil, fmt.Errorf("error receiving response %X %w", buffer, err3)
 	}
@@ -69,12 +89,4 @@ func (c *NetContext) Transmit(command []byte) ([]byte, error) {
 	err4 := pcRcv.Decode(buffer[:n])
 
 	return pcRcv.Body, err4
-}
-
-func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
-	return 0, nil
-}
-
-func (c *NetContext) CloseLogicalChannel(channel byte) error {
-	return nil
 }
