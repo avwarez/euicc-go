@@ -6,9 +6,12 @@ import (
 )
 
 type PacketCmd struct {
-	Cmd  string
-	Body []byte
-	Err  string
+	Cmd    string
+	Body   []byte
+	Err    string
+	Device string
+	Proto  string
+	Slot   uint8
 }
 
 func (p *PacketCmd) Decode(byteArray []byte) error {

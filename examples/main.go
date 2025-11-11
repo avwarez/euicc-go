@@ -20,7 +20,7 @@ func main() {
 	// 	panic(err)
 	// }
 	// ch, err := qmi.New("/dev/cdc-wdm0", 1)
-	ch, err := localnet.NewUDP("192.168.11.100:8080")
+	ch, err := localnet.NewUDP("192.168.11.100:8080", "/dev/cdc-wdm0", "qrtr", 2)
 	//ch, err := qmi.NewQRTR(2)
 	if err != nil {
 		panic(err)

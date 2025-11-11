@@ -16,28 +16,15 @@ import (
 
 var (
 	options lpa.Options
-	device  string
-	proto   string
-	slot    uint8
 )
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	deviceFlag := flag.String("device", "/dev/cdc-wdm0", "Device, if required")
-	protoFlag := flag.String("proto", "qrtr", "Protocol: qmi, qrtr, mbim, at")
-	slotFlag := flag.Int("slot", 2, "SIM slot where eSIM is installed (for QMI/QRTR/MBIM)")
-	//aidFlag := flag.ByteArray("aid", null, "AID opts value")
-	mssFlag := flag.Int("mss", 0, "MSS opts value")
+
 	bindAddrFlag := flag.String("bindAddr", "0.0.0.0", "Binding address")
 	bindPortFlag := flag.Int("bindPort", 8080, "Binding port")
-
 	flag.Parse()
 
-	device = *deviceFlag
-	proto = *protoFlag
-	slot = uint8(*slotFlag)
-	//options.AID = *aidFlag
-	options.MSS = *mssFlag
 	options.AdminProtocolVersion = "2"
 
 	addr := net.UDPAddr{
@@ -69,7 +56,7 @@ outer:
 			break
 		}
 
-		fmt.Printf("DEBUG Cmd: %s Body hex: %X\n", pcRcv.Cmd, pcRcv.Body)
+		fmt.Printf("DEBUG Cmd: %s Body hex: %X, Device: %s, Proto: %s, Slot: %d\n", pcRcv.Cmd, pcRcv.Body, pcRcv.Device, pcRcv.Proto, pcRcv.Slot)
 
 		pcSnd := localnet.PacketCmd{
 			Cmd:  "response",
@@ -84,19 +71,19 @@ outer:
 			if options.Channel != nil {
 				err = fmt.Errorf("error: channel already open, retry later")
 			} else {
-				switch proto {
+				switch pcRcv.Proto {
 				case "at":
-					options.Channel, err = at.New(device)
+					options.Channel, err = at.New(pcRcv.Device)
 				/*case "ccid":
 				options.Channel, err = ccid.New() */
 				case "mbim":
-					options.Channel, err = mbim.New(device, slot)
+					options.Channel, err = mbim.New(pcRcv.Device, pcRcv.Slot)
 				case "qmi":
-					options.Channel, err = qmi.New(device, slot)
+					options.Channel, err = qmi.New(pcRcv.Device, pcRcv.Slot)
 				case "qrtr":
-					options.Channel, err = qmi.NewQRTR(slot)
+					options.Channel, err = qmi.NewQRTR(pcRcv.Slot)
 				default:
-					err = fmt.Errorf("error: no handler for the specified protocol %s", proto)
+					err = fmt.Errorf("error: no handler for the specified protocol %s", pcRcv.Proto)
 				}
 			}
 
