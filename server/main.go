@@ -7,36 +7,39 @@ import (
 
 	"log/slog"
 
+	"github.com/damonto/euicc-go/driver/at"
 	"github.com/damonto/euicc-go/driver/localnet"
+	"github.com/damonto/euicc-go/driver/mbim"
 	"github.com/damonto/euicc-go/driver/qmi"
 	"github.com/damonto/euicc-go/lpa"
 )
 
 var (
 	options lpa.Options
+	device  string
 	proto   string
 	slot    uint8
 )
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	//deviceFlag := flag.String("device", "", "Device if required: /dev/cwm0")
+	deviceFlag := flag.String("device", "/dev/cdc-wdm0", "Device, if required")
 	protoFlag := flag.String("proto", "qrtr", "Protocol: qmi, qrtr, mbim, at")
-	slotFlag := flag.Int("slot", 2, "SIM slot where eSIM is installed (for QMI/QRTR)")
+	slotFlag := flag.Int("slot", 2, "SIM slot where eSIM is installed (for QMI/QRTR/MBIM)")
 	//aidFlag := flag.ByteArray("aid", null, "AID opts value")
 	mssFlag := flag.Int("mss", 0, "MSS opts value")
-	bindAddrFlag := flag.String("bindAddr", "0.0.0.0", "Binding address (default 0.0.0.0)")
-	bindPortFlag := flag.Int("bindPort", 8080, "Binding port (default 8080)")
+	bindAddrFlag := flag.String("bindAddr", "0.0.0.0", "Binding address")
+	bindPortFlag := flag.Int("bindPort", 8080, "Binding port")
 
 	flag.Parse()
 
+	device = *deviceFlag
 	proto = *protoFlag
 	slot = uint8(*slotFlag)
 	//options.AID = *aidFlag
 	options.MSS = *mssFlag
 	options.AdminProtocolVersion = "2"
 
-	// udp/tcp server here
 	addr := net.UDPAddr{
 		Port: *bindPortFlag,
 		IP:   net.ParseIP(*bindAddrFlag),
@@ -66,10 +69,7 @@ outer:
 			break
 		}
 
-		fmt.Printf("\n=== DEBUG PACKET ===\n")
-		fmt.Printf("Cmd: %s\n", pcRcv.Cmd)
-		fmt.Printf("Body hex: %X\n", pcRcv.Body)
-		fmt.Printf("==================\n\n")
+		fmt.Printf("DEBUG Cmd: %s Body hex: %X\n", pcRcv.Cmd, pcRcv.Body)
 
 		pcSnd := localnet.PacketCmd{
 			Cmd:  "response",
@@ -81,25 +81,33 @@ outer:
 
 		case "connect":
 
-			if options.Channel == nil {
+			if options.Channel != nil {
+				err = fmt.Errorf("error: channel already open, retry later")
+			} else {
 				switch proto {
-				//case "at":
-				//case "mbim":
-				//case "qmi":
+				case "at":
+					options.Channel, err = at.New(device)
+				/*case "ccid":
+				options.Channel, err = ccid.New() */
+				case "mbim":
+					options.Channel, err = mbim.New(device, slot)
+				case "qmi":
+					options.Channel, err = qmi.New(device, slot)
 				case "qrtr":
 					options.Channel, err = qmi.NewQRTR(slot)
-					if err != nil {
-						pcSnd.Err = err.Error()
-					} else {
-
-						err = options.Channel.Connect()
-						if err != nil {
-							pcSnd.Err = err.Error()
-							options.Channel = nil
-						}
-					}
 				default:
-					pcSnd.Err = "No handler for the specified protocol"
+					err = fmt.Errorf("error: no handler for the specified protocol %s", proto)
+				}
+			}
+
+			if err != nil {
+				pcSnd.Err = err.Error()
+			} else {
+
+				err = options.Channel.Connect()
+				if err != nil {
+					pcSnd.Err = err.Error()
+					options.Channel = nil
 				}
 			}
 
