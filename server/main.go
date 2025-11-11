@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"net"
@@ -10,12 +9,13 @@ import (
 
 	"github.com/damonto/euicc-go/driver/localnet"
 	"github.com/damonto/euicc-go/driver/qmi"
-	"github.com/damonto/euicc-go/driver/qmi/core"
 	"github.com/damonto/euicc-go/lpa"
 )
 
 var (
 	options lpa.Options
+	proto   string
+	slot    uint8
 )
 
 func main() {
@@ -30,30 +30,11 @@ func main() {
 
 	flag.Parse()
 
+	proto = *protoFlag
+	slot = uint8(*slotFlag)
 	//options.AID = *aidFlag
 	options.MSS = *mssFlag
 	options.AdminProtocolVersion = "2"
-
-	switch *protoFlag {
-	//case "at":
-	//case "mbim":
-	//case "qmi":
-	case "qrtr":
-		gob.Register(core.QMIError(0))
-		var err error
-		options.Channel, err = qmi.NewQRTR(uint8(*slotFlag))
-		if err != nil {
-			panic(err)
-		}
-	default:
-		panic("No handler for the specified protocol")
-	}
-
-	if err := options.Normalize(); err != nil {
-		panic("Error during options normalization")
-	}
-
-	defer options.Channel.Disconnect()
 
 	// udp/tcp server here
 	addr := net.UDPAddr{
@@ -97,18 +78,34 @@ outer:
 		}
 
 		switch pcRcv.Cmd {
-		case "exit":
-			fmt.Printf("Receiving 'exit' command. Closing server\n")
-			break outer
 
 		case "connect":
-			err = options.Channel.Connect()
-			if err != nil {
-				pcSnd.Err = err.Error()
+
+			if options.Channel == nil {
+				switch proto {
+				//case "at":
+				//case "mbim":
+				//case "qmi":
+				case "qrtr":
+					options.Channel, err = qmi.NewQRTR(slot)
+					if err != nil {
+						pcSnd.Err = err.Error()
+					} else {
+
+						err = options.Channel.Connect()
+						if err != nil {
+							pcSnd.Err = err.Error()
+							options.Channel = nil
+						}
+					}
+				default:
+					pcSnd.Err = "No handler for the specified protocol"
+				}
 			}
 
 		case "disconnect":
 			err = options.Channel.Disconnect()
+			options.Channel = nil
 			if err != nil {
 				pcSnd.Err = err.Error()
 			}
