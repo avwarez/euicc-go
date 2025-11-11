@@ -5,8 +5,19 @@ import (
 	"encoding/gob"
 )
 
+type Cmd string
+
+const (
+	CmdConnect      Cmd = "connect"
+	CmdDisconnect   Cmd = "disconnect"
+	CmdOpenLogical  Cmd = "openlogicalchannel"
+	CmdCloseLogical Cmd = "closelogicalchannel"
+	CmdTransmit     Cmd = "transmit"
+	CmdResponse     Cmd = "response"
+)
+
 type PacketCmd struct {
-	Cmd    string
+	Cmd    Cmd
 	Body   []byte
 	Err    string
 	Device string

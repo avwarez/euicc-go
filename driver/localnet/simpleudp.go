@@ -36,14 +36,14 @@ func (c *NetContext) Connect() error {
 	}
 	c.conn = conn
 
-	_, err = zzz(c.conn, "connect", nil, c.device, c.proto, c.slot)
+	_, err = zzz(c, CmdConnect, nil)
 	return err
 }
 
 func (c *NetContext) Disconnect() error {
 	var err error
 	if c.conn != nil {
-		_, err = zzz(c.conn, "disconnect", nil, c.device, c.proto, c.slot)
+		_, err = zzz(c, CmdDisconnect, nil)
 		c.conn.Close()
 		c.conn = nil
 	}
@@ -51,29 +51,29 @@ func (c *NetContext) Disconnect() error {
 }
 
 func (c *NetContext) Transmit(command []byte) ([]byte, error) {
-	return zzz(c.conn, "transmit", command, c.device, c.proto, c.slot)
+	return zzz(c, CmdTransmit, command)
 }
 
 func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
 	gob.Register(core.QMIError(0))
-	bb, er := zzz(c.conn, "openlogicalchannel", AID, c.device, c.proto, c.slot)
+	bb, er := zzz(c, CmdOpenLogical, AID)
 	return bb[0], er
 }
 
 func (c *NetContext) CloseLogicalChannel(channel byte) error {
-	_, er := zzz(c.conn, "closelogicalchannel", []byte{channel}, c.device, c.proto, c.slot)
+	_, er := zzz(c, CmdCloseLogical, []byte{channel})
 	return er
 }
 
-func zzz(cn *net.UDPConn, cm string, bd []byte, de string, pr string, sl uint8) (by []byte, er error) {
+func zzz(nc *NetContext, cm Cmd, bd []byte) (by []byte, er error) {
 
 	pcSnd := PacketCmd{
 		Cmd:    cm,
 		Body:   bd,
 		Err:    "",
-		Device: de,
-		Proto:  pr,
-		Slot:   sl,
+		Device: nc.device,
+		Proto:  nc.proto,
+		Slot:   nc.slot,
 	}
 
 	byteToTransmit, err1 := pcSnd.Encode()
@@ -81,13 +81,13 @@ func zzz(cn *net.UDPConn, cm string, bd []byte, de string, pr string, sl uint8) 
 		return nil, fmt.Errorf("error encoding message %X %w", cm, err1)
 	}
 
-	_, err2 := cn.Write(byteToTransmit)
+	_, err2 := nc.conn.Write(byteToTransmit)
 	if err2 != nil {
 		return nil, fmt.Errorf("error sending message %X %w", cm, err2)
 	}
 
 	buffer := make([]byte, 512)
-	n, _, err3 := cn.ReadFromUDP(buffer)
+	n, _, err3 := nc.conn.ReadFromUDP(buffer)
 	if err3 != nil {
 		return nil, fmt.Errorf("error receiving response %X %w", buffer, err3)
 	}

@@ -59,14 +59,14 @@ outer:
 		fmt.Printf("DEBUG Cmd: %s Body hex: %X, Device: %s, Proto: %s, Slot: %d\n", pcRcv.Cmd, pcRcv.Body, pcRcv.Device, pcRcv.Proto, pcRcv.Slot)
 
 		pcSnd := localnet.PacketCmd{
-			Cmd:  "response",
+			Cmd:  localnet.CmdResponse,
 			Body: nil,
 			Err:  "",
 		}
 
 		switch pcRcv.Cmd {
 
-		case "connect":
+		case localnet.CmdConnect:
 
 			if options.Channel != nil {
 				err = fmt.Errorf("error: channel already open, retry later")
@@ -98,14 +98,14 @@ outer:
 				}
 			}
 
-		case "disconnect":
+		case localnet.CmdDisconnect:
 			err = options.Channel.Disconnect()
 			options.Channel = nil
 			if err != nil {
 				pcSnd.Err = err.Error()
 			}
 
-		case "openlogicalchannel":
+		case localnet.CmdOpenLogical:
 			var channel byte
 			channel, err = options.Channel.OpenLogicalChannel(pcRcv.Body)
 			pcSnd.Body = []byte{channel}
@@ -113,13 +113,13 @@ outer:
 				pcSnd.Err = err.Error()
 			}
 
-		case "closelogicalchannel":
+		case localnet.CmdCloseLogical:
 			err = options.Channel.CloseLogicalChannel(pcRcv.Body[0])
 			if err != nil {
 				pcSnd.Err = err.Error()
 			}
 
-		case "transmit":
+		case localnet.CmdTransmit:
 			pcSnd.Body, err = options.Channel.Transmit(pcRcv.Body)
 			if err != nil {
 				fmt.Printf("Error on transmit: %s\n", err)
