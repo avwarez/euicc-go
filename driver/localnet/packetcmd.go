@@ -8,7 +8,7 @@ import (
 type PacketCmd struct {
 	Cmd  string
 	Body []byte
-	Err  error
+	Err  string
 }
 
 func (p *PacketCmd) Decode(byteArray []byte) error {

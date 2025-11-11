@@ -93,7 +93,7 @@ outer:
 		pcSnd := localnet.PacketCmd{
 			Cmd:  "response",
 			Body: nil,
-			Err:  nil,
+			Err:  "",
 		}
 
 		switch pcRcv.Cmd {
@@ -102,23 +102,36 @@ outer:
 			break outer
 
 		case "connect":
-			pcSnd.Err = options.Channel.Connect()
+			err = options.Channel.Connect()
+			if err != nil {
+				pcSnd.Err = err.Error()
+			}
 
 		case "disconnect":
-			pcSnd.Err = options.Channel.Disconnect()
+			err = options.Channel.Disconnect()
+			if err != nil {
+				pcSnd.Err = err.Error()
+			}
 
 		case "openlogicalchannel":
 			var channel byte
-			channel, pcSnd.Err = options.Channel.OpenLogicalChannel(pcRcv.Body)
+			channel, err = options.Channel.OpenLogicalChannel(pcRcv.Body)
 			pcSnd.Body = []byte{channel}
+			if err != nil {
+				pcSnd.Err = err.Error()
+			}
 
 		case "closelogicalchannel":
-			pcSnd.Err = options.Channel.CloseLogicalChannel(pcRcv.Body[0])
+			err = options.Channel.CloseLogicalChannel(pcRcv.Body[0])
+			if err != nil {
+				pcSnd.Err = err.Error()
+			}
 
 		case "transmit":
-			pcSnd.Body, pcSnd.Err = options.Channel.Transmit(pcRcv.Body)
-			if pcSnd.Err != nil {
-				fmt.Printf("Error on transmit: %s\n", pcSnd.Err)
+			pcSnd.Body, err = options.Channel.Transmit(pcRcv.Body)
+			if err != nil {
+				fmt.Printf("Error on transmit: %s\n", err)
+				pcSnd.Err = err.Error()
 			}
 			fmt.Printf("Receiving raw from channel: %X\n", pcSnd.Body)
 

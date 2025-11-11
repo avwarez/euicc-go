@@ -2,6 +2,7 @@ package localnet
 
 import (
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"net"
 
@@ -66,7 +67,7 @@ func zzz(cn *net.UDPConn, cm string, bd []byte) (by []byte, er error) {
 	pcSnd := PacketCmd{
 		Cmd:  cm,
 		Body: bd,
-		Err:  nil,
+		Err:  "",
 	}
 
 	byteToTransmit, err1 := pcSnd.Encode()
@@ -87,6 +88,13 @@ func zzz(cn *net.UDPConn, cm string, bd []byte) (by []byte, er error) {
 
 	pcRcv := PacketCmd{}
 	err4 := pcRcv.Decode(buffer[:n])
+	if err4 != nil {
+		return nil, fmt.Errorf("error decoding response %X %w", buffer[:n], err4)
+	}
 
-	return pcRcv.Body, err4
+	if pcRcv.Err != "" {
+		return pcRcv.Body, errors.New(pcRcv.Err)
+	}
+
+	return pcRcv.Body, nil
 }
