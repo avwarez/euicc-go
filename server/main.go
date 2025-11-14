@@ -49,9 +49,8 @@ outer:
 			break
 		}
 
-		pcRcv := localnet.PacketCmd{}
-		err = pcRcv.Decode(buffer[:n])
-		if err != nil {
+		var pcRcv, errr = localnet.Decode(buffer[:n])
+		if errr != nil {
 			fmt.Printf("Error decoding packet. Closing server\n")
 			break
 		}
@@ -132,7 +131,7 @@ outer:
 			break outer
 		}
 
-		byteArrayResponse, err := pcSnd.Encode()
+		byteArrayResponse, err := localnet.Encode(pcSnd)
 		if err != nil {
 			fmt.Printf("Error encoding response: %s\n", err)
 			break

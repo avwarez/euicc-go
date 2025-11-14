@@ -17,6 +17,15 @@ const (
 	CmdResponse     Cmd = "response"
 )
 
+type IPacketCmd interface {
+	GetCmd() Cmd
+	GetBody() []byte
+	GetErr() string
+	GetDevice() string
+	GetProto() string
+	GetSlot() uint8
+}
+
 type PacketCmd struct {
 	Cmd    Cmd
 	Body   []byte
@@ -26,16 +35,19 @@ type PacketCmd struct {
 	Slot   uint8
 }
 
-func (p *PacketCmd) Decode(byteArray []byte) error {
+func Decode(byteArray []byte) (p IPacketCmd, e error) {
+	gob.Register(&PacketCmd{})
 	buf := bytes.NewBuffer(byteArray)
 	dec := gob.NewDecoder(buf)
-	return dec.Decode(p)
+	e = dec.Decode(&p)
+	return p, e
 }
 
-func (p PacketCmd) Encode() (byteArray []byte, err error) {
+func Encode(p IPacketCmd) (byteArray []byte, err error) {
+	gob.Register(&PacketCmd{})
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(p)
+	err = enc.Encode(&p)
 	return buf.Bytes(), err
 }
 
