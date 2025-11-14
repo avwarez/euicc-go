@@ -67,14 +67,7 @@ func (c *NetContext) CloseLogicalChannel(channel byte) error {
 
 func zzz(nc *NetContext, cm Cmd, bd []byte) (by []byte, er error) {
 
-	pcSnd := PacketCmd{
-		Cmd:    cm,
-		Body:   bd,
-		Err:    "",
-		Device: nc.device,
-		Proto:  nc.proto,
-		Slot:   nc.slot,
-	}
+	pcSnd := PacketCmd{cm, bd, "", nc.device, nc.proto, nc.slot}
 
 	byteToTransmit, err1 := pcSnd.Encode()
 	if err1 != nil {
@@ -98,9 +91,9 @@ func zzz(nc *NetContext, cm Cmd, bd []byte) (by []byte, er error) {
 		return nil, fmt.Errorf("error decoding response %X %w", buffer[:n], err4)
 	}
 
-	if pcRcv.Err != "" {
-		return pcRcv.Body, errors.New(pcRcv.Err)
+	if pcRcv.GetErr() != "" {
+		return pcRcv.GetBody(), errors.New(pcRcv.GetErr())
 	}
 
-	return pcRcv.Body, nil
+	return pcRcv.GetBody(), nil
 }

@@ -56,7 +56,7 @@ outer:
 			break
 		}
 
-		fmt.Printf("DEBUG Cmd: %s Body hex: %X, Device: %s, Proto: %s, Slot: %d\n", pcRcv.Cmd, pcRcv.Body, pcRcv.Device, pcRcv.Proto, pcRcv.Slot)
+		fmt.Printf("DEBUG %s\n", pcRcv)
 
 		pcSnd := localnet.PacketCmd{
 			Cmd:  localnet.CmdResponse,
@@ -64,26 +64,26 @@ outer:
 			Err:  "",
 		}
 
-		switch pcRcv.Cmd {
+		switch pcRcv.GetCmd() {
 
 		case localnet.CmdConnect:
 
 			if options.Channel != nil {
 				err = fmt.Errorf("error: channel already open, retry later")
 			} else {
-				switch pcRcv.Proto {
+				switch pcRcv.GetProto() {
 				case "at":
-					options.Channel, err = at.New(pcRcv.Device)
+					options.Channel, err = at.New(pcRcv.GetDevice())
 				/*case "ccid":
 				options.Channel, err = ccid.New() */
 				case "mbim":
-					options.Channel, err = mbim.New(pcRcv.Device, pcRcv.Slot)
+					options.Channel, err = mbim.New(pcRcv.GetDevice(), pcRcv.GetSlot())
 				case "qmi":
-					options.Channel, err = qmi.New(pcRcv.Device, pcRcv.Slot)
+					options.Channel, err = qmi.New(pcRcv.GetDevice(), pcRcv.GetSlot())
 				case "qrtr":
-					options.Channel, err = qmi.NewQRTR(pcRcv.Slot)
+					options.Channel, err = qmi.NewQRTR(pcRcv.GetSlot())
 				default:
-					err = fmt.Errorf("error: no handler for the specified protocol %s", pcRcv.Proto)
+					err = fmt.Errorf("error: no handler for the specified protocol %s", pcRcv.GetProto())
 				}
 			}
 
@@ -107,25 +107,25 @@ outer:
 
 		case localnet.CmdOpenLogical:
 			var channel byte
-			channel, err = options.Channel.OpenLogicalChannel(pcRcv.Body)
+			channel, err = options.Channel.OpenLogicalChannel(pcRcv.GetBody())
 			pcSnd.Body = []byte{channel}
 			if err != nil {
 				pcSnd.Err = err.Error()
 			}
 
 		case localnet.CmdCloseLogical:
-			err = options.Channel.CloseLogicalChannel(pcRcv.Body[0])
+			err = options.Channel.CloseLogicalChannel(pcRcv.GetBody()[0])
 			if err != nil {
 				pcSnd.Err = err.Error()
 			}
 
 		case localnet.CmdTransmit:
-			pcSnd.Body, err = options.Channel.Transmit(pcRcv.Body)
+			pcSnd.Body, err = options.Channel.Transmit(pcRcv.GetBody())
 			if err != nil {
 				fmt.Printf("Error on transmit: %s\n", err)
 				pcSnd.Err = err.Error()
 			}
-			fmt.Printf("Receiving raw from channel: %X\n", pcSnd.Body)
+			fmt.Printf("Receiving raw from channel: %X\n", pcSnd.GetBody())
 
 		default:
 			fmt.Printf("Receiving unknown command. Closing server\n")
