@@ -21,15 +21,23 @@ type IPacketCmd interface {
 	GetCmd() Cmd
 	GetBody() []byte
 	GetErr() string
+}
+
+type IPacketConnect interface {
+	IPacketCmd
 	GetDevice() string
 	GetProto() string
 	GetSlot() uint8
 }
 
 type PacketCmd struct {
-	Cmd    Cmd
-	Body   []byte
-	Err    string
+	Cmd  Cmd
+	Body []byte
+	Err  string
+}
+
+type PacketConnect struct {
+	PacketCmd
 	Device string
 	Proto  string
 	Slot   uint8
@@ -37,6 +45,8 @@ type PacketCmd struct {
 
 func Decode(byteArray []byte) (p IPacketCmd, e error) {
 	gob.Register(&PacketCmd{})
+	gob.Register(&PacketConnect{})
+
 	buf := bytes.NewBuffer(byteArray)
 	dec := gob.NewDecoder(buf)
 	e = dec.Decode(&p)
@@ -45,6 +55,8 @@ func Decode(byteArray []byte) (p IPacketCmd, e error) {
 
 func Encode(p IPacketCmd) (byteArray []byte, err error) {
 	gob.Register(&PacketCmd{})
+	gob.Register(&PacketConnect{})
+
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	err = enc.Encode(&p)
@@ -63,18 +75,22 @@ func (p PacketCmd) GetErr() string {
 	return p.Err
 }
 
-func (p PacketCmd) GetDevice() string {
+func (p PacketConnect) GetDevice() string {
 	return p.Device
 }
 
-func (p PacketCmd) GetProto() string {
+func (p PacketConnect) GetProto() string {
 	return p.Proto
 }
 
-func (p PacketCmd) GetSlot() uint8 {
+func (p PacketConnect) GetSlot() uint8 {
 	return p.Slot
 }
 
 func (p PacketCmd) String() string {
-	return fmt.Sprintf("Cmd: %s, Body(hex): %X, Device: %s, Proto: %s, Slot: %d\n", p.GetCmd(), p.GetBody(), p.GetDevice(), p.GetProto(), p.GetSlot())
+	return fmt.Sprintf("Cmd: %s, Body(hex): %X, Err: %s", p.GetCmd(), p.GetBody(), p.GetErr())
+}
+
+func (p PacketConnect) String() string {
+	return fmt.Sprintf("%s, Device: %s, Proto: %s, Slot: %d", p.PacketCmd, p.GetDevice(), p.GetProto(), p.GetSlot())
 }

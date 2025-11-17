@@ -70,19 +70,21 @@ outer:
 			if options.Channel != nil {
 				err = fmt.Errorf("error: channel already open, retry later")
 			} else {
-				switch pcRcv.GetProto() {
+				var pcConn localnet.IPacketConnect = pcRcv.(localnet.IPacketConnect)
+
+				switch pcConn.GetProto() {
 				case "at":
-					options.Channel, err = at.New(pcRcv.GetDevice())
+					options.Channel, err = at.New(pcConn.GetDevice())
 				/*case "ccid":
 				options.Channel, err = ccid.New() */
 				case "mbim":
-					options.Channel, err = mbim.New(pcRcv.GetDevice(), pcRcv.GetSlot())
+					options.Channel, err = mbim.New(pcConn.GetDevice(), pcConn.GetSlot())
 				case "qmi":
-					options.Channel, err = qmi.New(pcRcv.GetDevice(), pcRcv.GetSlot())
+					options.Channel, err = qmi.New(pcConn.GetDevice(), pcConn.GetSlot())
 				case "qrtr":
-					options.Channel, err = qmi.NewQRTR(pcRcv.GetSlot())
+					options.Channel, err = qmi.NewQRTR(pcConn.GetSlot())
 				default:
-					err = fmt.Errorf("error: no handler for the specified protocol %s", pcRcv.GetProto())
+					err = fmt.Errorf("error: no handler for the specified protocol %s", pcConn.GetProto())
 				}
 			}
 
@@ -124,7 +126,7 @@ outer:
 				fmt.Printf("Error on transmit: %s\n", err)
 				pcSnd.Err = err.Error()
 			}
-			fmt.Printf("Receiving raw from channel: %X\n", pcSnd.GetBody())
+			fmt.Printf("DEBUG %s\n", pcSnd)
 
 		default:
 			fmt.Printf("Receiving unknown command. Closing server\n")
