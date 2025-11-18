@@ -1,13 +1,10 @@
 package localnet
 
 import (
-	"encoding/gob"
-	"errors"
 	"fmt"
 	"net"
 
 	"github.com/damonto/euicc-go/apdu"
-	"github.com/damonto/euicc-go/driver/qmi/core"
 )
 
 type NetContext struct {
@@ -36,14 +33,14 @@ func (c *NetContext) Connect() error {
 	}
 	c.conn = conn
 
-	_, err = zzz(c, CmdConnect, nil)
+	_, err = remoteCall(c, NewPacketConnect(c.device, c.proto, c.slot))
 	return err
 }
 
 func (c *NetContext) Disconnect() error {
 	var err error
 	if c.conn != nil {
-		_, err = zzz(c, CmdDisconnect, nil)
+		_, err = remoteCall(c, NewPacketCmd(CmdDisconnect))
 		c.conn.Close()
 		c.conn = nil
 	}
@@ -51,38 +48,30 @@ func (c *NetContext) Disconnect() error {
 }
 
 func (c *NetContext) Transmit(command []byte) ([]byte, error) {
-	return zzz(c, CmdTransmit, command)
+	return remoteCall(c, NewPacketBody(CmdTransmit, command))
 }
 
 func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
-	gob.Register(core.QMIError(0))
-	bb, er := zzz(c, CmdOpenLogical, AID)
+	//gob.Register(core.QMIError(0))
+	bb, er := remoteCall(c, NewPacketBody(CmdOpenLogical, AID))
 	return bb[0], er
 }
 
 func (c *NetContext) CloseLogicalChannel(channel byte) error {
-	_, er := zzz(c, CmdCloseLogical, []byte{channel})
+	_, er := remoteCall(c, NewPacketBody(CmdCloseLogical, []byte{channel}))
 	return er
 }
 
-func zzz(nc *NetContext, cm Cmd, bd []byte) (by []byte, er error) {
+func remoteCall(nc *NetContext, pcSnd IPacketCmd) (by []byte, er error) {
 
-	var byteToTransmit []byte
-	var err1 error
-	if cm == CmdConnect {
-		var pcConn IPacketCmd = PacketConnect{PacketCmd{cm, bd, ""}, nc.device, nc.proto, nc.slot}
-		byteToTransmit, err1 = Encode(pcConn)
-	} else {
-		var pcSnd IPacketCmd = PacketCmd{cm, bd, ""}
-		byteToTransmit, err1 = Encode(pcSnd)
-	}
+	byteToTransmit, err1 := Encode(pcSnd)
 	if err1 != nil {
-		return nil, fmt.Errorf("error encoding message %X %w", cm, err1)
+		return nil, fmt.Errorf("error encoding message %s %w", pcSnd, err1)
 	}
 
 	_, err2 := nc.conn.Write(byteToTransmit)
 	if err2 != nil {
-		return nil, fmt.Errorf("error sending message %X %w", cm, err2)
+		return nil, fmt.Errorf("error sending message %s %w", pcSnd, err2)
 	}
 
 	buffer := make([]byte, 512)
@@ -91,13 +80,13 @@ func zzz(nc *NetContext, cm Cmd, bd []byte) (by []byte, er error) {
 		return nil, fmt.Errorf("error receiving response %X %w", buffer, err3)
 	}
 
-	var pcRcv, err4 = Decode(buffer[:n])
+	pcRcv, err4 := Decode(buffer[:n])
 	if err4 != nil {
 		return nil, fmt.Errorf("error decoding response %X %w", buffer[:n], err4)
 	}
 
 	if pcRcv.GetErr() != "" {
-		return pcRcv.GetBody(), errors.New(pcRcv.GetErr())
+		return nil, fmt.Errorf("error on server %s", pcRcv.GetErr())
 	}
 
 	return pcRcv.GetBody(), nil

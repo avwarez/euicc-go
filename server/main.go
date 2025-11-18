@@ -57,11 +57,7 @@ outer:
 
 		fmt.Printf("DEBUG %s\n", pcRcv)
 
-		pcSnd := localnet.PacketCmd{
-			Cmd:  localnet.CmdResponse,
-			Body: nil,
-			Err:  "",
-		}
+		var pcSnd localnet.IPacketCmd = nil
 
 		switch pcRcv.GetCmd() {
 
@@ -89,12 +85,12 @@ outer:
 			}
 
 			if err != nil {
-				pcSnd.Err = err.Error()
+				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
 			} else {
 
 				err = options.Channel.Connect()
 				if err != nil {
-					pcSnd.Err = err.Error()
+					pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
 					options.Channel = nil
 				}
 			}
@@ -103,28 +99,32 @@ outer:
 			err = options.Channel.Disconnect()
 			options.Channel = nil
 			if err != nil {
-				pcSnd.Err = err.Error()
+				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
 			}
 
 		case localnet.CmdOpenLogical:
 			var channel byte
 			channel, err = options.Channel.OpenLogicalChannel(pcRcv.GetBody())
-			pcSnd.Body = []byte{channel}
+			var bb = []byte{channel}
 			if err != nil {
-				pcSnd.Err = err.Error()
+				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
+			} else {
+				pcSnd = localnet.NewPacketBody(localnet.CmdResponse, bb)
 			}
 
 		case localnet.CmdCloseLogical:
 			err = options.Channel.CloseLogicalChannel(pcRcv.GetBody()[0])
 			if err != nil {
-				pcSnd.Err = err.Error()
+				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
 			}
 
 		case localnet.CmdTransmit:
-			pcSnd.Body, err = options.Channel.Transmit(pcRcv.GetBody())
+			var bb, err = options.Channel.Transmit(pcRcv.GetBody())
 			if err != nil {
 				fmt.Printf("Error on transmit: %s\n", err)
-				pcSnd.Err = err.Error()
+				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
+			} else {
+				pcSnd = localnet.NewPacketBody(localnet.CmdResponse, bb)
 			}
 			fmt.Printf("DEBUG %s\n", pcSnd)
 
@@ -133,6 +133,9 @@ outer:
 			break outer
 		}
 
+		if pcSnd == nil {
+			pcSnd = localnet.NewPacketCmd(localnet.CmdResponse)
+		}
 		byteArrayResponse, err := localnet.Encode(pcSnd)
 		if err != nil {
 			fmt.Printf("Error encoding response: %s\n", err)

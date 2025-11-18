@@ -94,3 +94,19 @@ func (p PacketCmd) String() string {
 func (p PacketConnect) String() string {
 	return fmt.Sprintf("%s, Device: %s, Proto: %s, Slot: %d", p.PacketCmd, p.GetDevice(), p.GetProto(), p.GetSlot())
 }
+
+func NewPacketCmd(cmd Cmd) IPacketCmd {
+	return PacketCmd{cmd, nil, ""}
+}
+
+func NewPacketCmdErr(cmd Cmd, err string) IPacketCmd {
+	return PacketCmd{cmd, nil, err}
+}
+
+func NewPacketBody(cmd Cmd, body []byte) IPacketCmd {
+	return PacketCmd{cmd, body, ""}
+}
+
+func NewPacketConnect(device string, proto string, slot uint8) IPacketCmd {
+	return PacketConnect{PacketCmd{CmdConnect, nil, ""}, device, proto, slot}
+}
