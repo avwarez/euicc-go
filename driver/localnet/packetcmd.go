@@ -2,6 +2,7 @@ package localnet
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/gob"
 	"fmt"
 )
@@ -19,8 +20,12 @@ const (
 
 type IPacketCmd interface {
 	GetCmd() Cmd
-	GetBody() []byte
 	GetErr() string
+}
+
+type IPacketBody interface {
+	IPacketCmd
+	GetBody() []byte
 }
 
 type IPacketConnect interface {
@@ -31,9 +36,13 @@ type IPacketConnect interface {
 }
 
 type PacketCmd struct {
-	Cmd  Cmd
+	Cmd Cmd
+	Err string
+}
+
+type PacketBody struct {
+	PacketCmd
 	Body []byte
-	Err  string
 }
 
 type PacketConnect struct {
@@ -45,34 +54,56 @@ type PacketConnect struct {
 
 func Decode(byteArray []byte) (p IPacketCmd, e error) {
 	gob.Register(&PacketCmd{})
+	gob.Register(&PacketBody{})
 	gob.Register(&PacketConnect{})
 
-	buf := bytes.NewBuffer(byteArray)
-	dec := gob.NewDecoder(buf)
+	// Decomprimi
+	gr, err := gzip.NewReader(bytes.NewReader(byteArray))
+	if err != nil {
+		return nil, err
+	}
+	defer gr.Close()
+
+	// Decodifica GOB
+	dec := gob.NewDecoder(gr)
 	e = dec.Decode(&p)
 	return p, e
 }
 
 func Encode(p IPacketCmd) (byteArray []byte, err error) {
 	gob.Register(&PacketCmd{})
+	gob.Register(&PacketBody{})
 	gob.Register(&PacketConnect{})
 
 	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err = enc.Encode(&p)
-	return buf.Bytes(), err
+
+	// Comprimi (livello default = 6, buon compromesso)
+	gw := gzip.NewWriter(&buf)
+
+	// Codifica GOB
+	enc := gob.NewEncoder(gw)
+	if err = enc.Encode(&p); err != nil {
+		return nil, err
+	}
+
+	// Importante: chiudi il writer per flushare i dati compressi
+	if err = gw.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (p PacketCmd) GetCmd() Cmd {
 	return p.Cmd
 }
 
-func (p PacketCmd) GetBody() []byte {
-	return p.Body
-}
-
 func (p PacketCmd) GetErr() string {
 	return p.Err
+}
+
+func (p PacketBody) GetBody() []byte {
+	return p.Body
 }
 
 func (p PacketConnect) GetDevice() string {
@@ -88,7 +119,11 @@ func (p PacketConnect) GetSlot() uint8 {
 }
 
 func (p PacketCmd) String() string {
-	return fmt.Sprintf("Cmd: %s, Body(hex): %X, Err: %s", p.GetCmd(), p.GetBody(), p.GetErr())
+	return fmt.Sprintf("Cmd: %s, Err: %s", p.GetCmd(), p.GetErr())
+}
+
+func (p PacketBody) String() string {
+	return fmt.Sprintf("%s, Body(hex): %X", p.PacketCmd, p.GetBody())
 }
 
 func (p PacketConnect) String() string {
@@ -96,17 +131,17 @@ func (p PacketConnect) String() string {
 }
 
 func NewPacketCmd(cmd Cmd) IPacketCmd {
-	return PacketCmd{cmd, nil, ""}
+	return PacketCmd{cmd, ""}
 }
 
 func NewPacketCmdErr(cmd Cmd, err string) IPacketCmd {
-	return PacketCmd{cmd, nil, err}
+	return PacketCmd{cmd, err}
 }
 
 func NewPacketBody(cmd Cmd, body []byte) IPacketCmd {
-	return PacketCmd{cmd, body, ""}
+	return PacketBody{PacketCmd{cmd, ""}, body}
 }
 
 func NewPacketConnect(device string, proto string, slot uint8) IPacketCmd {
-	return PacketConnect{PacketCmd{CmdConnect, nil, ""}, device, proto, slot}
+	return PacketConnect{PacketCmd{CmdConnect, ""}, device, proto, slot}
 }

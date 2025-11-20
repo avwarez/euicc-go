@@ -89,5 +89,8 @@ func remoteCall(nc *NetContext, pcSnd IPacketCmd) (by []byte, er error) {
 		return nil, fmt.Errorf("error on server %s", pcRcv.GetErr())
 	}
 
-	return pcRcv.GetBody(), nil
+	if ext, ok := pcRcv.(IPacketBody); ok {
+		return ext.GetBody(), nil
+	}
+	return nil, nil
 }

@@ -104,7 +104,7 @@ outer:
 
 		case localnet.CmdOpenLogical:
 			var channel byte
-			channel, err = options.Channel.OpenLogicalChannel(pcRcv.GetBody())
+			channel, err = options.Channel.OpenLogicalChannel(pcRcv.(localnet.IPacketBody).GetBody())
 			var bb = []byte{channel}
 			if err != nil {
 				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
@@ -113,13 +113,13 @@ outer:
 			}
 
 		case localnet.CmdCloseLogical:
-			err = options.Channel.CloseLogicalChannel(pcRcv.GetBody()[0])
+			err = options.Channel.CloseLogicalChannel(pcRcv.(localnet.IPacketBody).GetBody()[0])
 			if err != nil {
 				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
 			}
 
 		case localnet.CmdTransmit:
-			var bb, err = options.Channel.Transmit(pcRcv.GetBody())
+			var bb, err = options.Channel.Transmit(pcRcv.(localnet.IPacketBody).GetBody())
 			if err != nil {
 				fmt.Printf("Error on transmit: %s\n", err)
 				pcSnd = localnet.NewPacketCmdErr(localnet.CmdResponse, err.Error())
