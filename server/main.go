@@ -23,6 +23,7 @@ func main() {
 
 	bindAddrFlag := flag.String("bindAddr", "0.0.0.0", "Binding address")
 	bindPortFlag := flag.Int("bindPort", 8080, "Binding port")
+	bufferSizeFlag := flag.Int("bufferSize", 2048, "Buffer size in byte")
 	flag.Parse()
 
 	options.AdminProtocolVersion = "2"
@@ -39,7 +40,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	buffer := make([]byte, 512)
+	buffer := make([]byte, *bufferSizeFlag)
 
 outer:
 	for {

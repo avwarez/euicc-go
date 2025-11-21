@@ -15,15 +15,19 @@ type NetContext struct {
 	device     string
 	proto      string
 	slot       uint8
+	bufferSize uint16
 }
 
-func NewUDP(serverAddr string, device string, proto string, slot uint8) (apdu.SmartCardChannel, error) {
+type NetConf struct {
+}
+
+func NewUDP(serverAddr string, device string, proto string, slot uint8, bufferSize uint16) (apdu.SmartCardChannel, error) {
 	rAddr, err := net.ResolveUDPAddr("udp", serverAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving address: %s %w", serverAddr, err)
 	}
 
-	netctx := &NetContext{serverAddr: serverAddr, rAddr: rAddr, device: device, proto: proto, slot: slot}
+	netctx := &NetContext{serverAddr: serverAddr, rAddr: rAddr, device: device, proto: proto, slot: slot, bufferSize: bufferSize}
 	return netctx, nil
 }
 
@@ -55,9 +59,9 @@ func (c *NetContext) Transmit(command []byte) ([]byte, error) {
 func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
 	bb, er := remoteCall(c, NewPacketBody(CmdOpenLogical, AID))
 	if er != nil {
-		return 0, er
+		return 255, er
 	} else if bb == nil || len(bb) != 1 {
-		return 0, errors.New("openlogicalchannel: empty channel received")
+		return 255, errors.New("openlogicalchannel: empty channel received")
 	}
 	return bb[0], er
 }
@@ -79,7 +83,10 @@ func remoteCall(nc *NetContext, pcSnd IPacketCmd) (by []byte, er error) {
 		return nil, fmt.Errorf("error sending message %s %w", pcSnd, err2)
 	}
 
-	buffer := make([]byte, 512)
+	if nc.bufferSize <= 0 {
+		nc.bufferSize = 2048
+	}
+	buffer := make([]byte, nc.bufferSize)
 	n, _, err3 := nc.conn.ReadFromUDP(buffer)
 	if err3 != nil {
 		return nil, fmt.Errorf("error receiving response %X %w", buffer, err3)
