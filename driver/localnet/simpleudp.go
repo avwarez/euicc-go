@@ -1,6 +1,7 @@
 package localnet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
@@ -53,8 +54,10 @@ func (c *NetContext) Transmit(command []byte) ([]byte, error) {
 
 func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
 	bb, er := remoteCall(c, NewPacketBody(CmdOpenLogical, AID))
-	if er != nil || bb == nil || len(bb) != 1 {
+	if er != nil {
 		return 0, er
+	} else if bb == nil || len(bb) != 1 {
+		return 0, errors.New("openlogicalchannel: empty channel received")
 	}
 	return bb[0], er
 }
