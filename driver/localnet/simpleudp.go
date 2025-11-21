@@ -52,8 +52,10 @@ func (c *NetContext) Transmit(command []byte) ([]byte, error) {
 }
 
 func (c *NetContext) OpenLogicalChannel(AID []byte) (byte, error) {
-	//gob.Register(core.QMIError(0))
 	bb, er := remoteCall(c, NewPacketBody(CmdOpenLogical, AID))
+	if er != nil || bb == nil || len(bb) != 1 {
+		return 0, er
+	}
 	return bb[0], er
 }
 
