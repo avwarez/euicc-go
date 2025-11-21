@@ -16,6 +16,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const AF_QIPCRTR = 0x2a
+
 var _ net.Conn = (*QRTRConn)(nil)
 
 const (
@@ -52,7 +54,7 @@ func (s SockAddr) Network() string {
 }
 
 func (s SockAddr) String() string {
-	return fmt.Sprintf("qrtr://%d:%d/%d", unix.AF_QIPCRTR, s.Node, s.Port)
+	return fmt.Sprintf("qrtr://%d:%d/%d", AF_QIPCRTR, s.Node, s.Port)
 }
 
 // ControlPacket represents a QRTR control packet
@@ -139,7 +141,7 @@ func (c *QRTR) sendControlPacket(serviceType core.ServiceType) error {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, pkt)
 	_, err := c.conn.Sendto(&SockAddr{
-		Family: unix.AF_QIPCRTR,
+		Family: AF_QIPCRTR,
 		Node:   QRTRNodeBroadcast,
 		Port:   QRTRPortControl,
 	}, buf.Bytes())
@@ -151,7 +153,7 @@ func (c *QRTR) Disconnect() error {
 }
 
 func newQRTRConn() (*QRTRConn, error) {
-	fd, err := unix.Socket(unix.AF_QIPCRTR, unix.SOCK_DGRAM, 0)
+	fd, err := unix.Socket(AF_QIPCRTR, unix.SOCK_DGRAM, 0)
 	if err != nil {
 		return nil, fmt.Errorf("create QRTR socket: %w", err)
 	}
@@ -230,7 +232,7 @@ func (c *QRTRConn) Read(b []byte) (int, error) {
 
 func (c *QRTRConn) Write(b []byte) (int, error) {
 	return c.Sendto(&SockAddr{
-		Family: unix.AF_QIPCRTR,
+		Family: AF_QIPCRTR,
 		Node:   c.Service.Node,
 		Port:   c.Service.Port,
 	}, b)
@@ -242,7 +244,7 @@ func (c *QRTRConn) Close() error {
 
 func (c *QRTRConn) LocalAddr() net.Addr {
 	return &SockAddr{
-		Family: unix.AF_QIPCRTR,
+		Family: AF_QIPCRTR,
 		Node:   c.Service.Node,
 		Port:   c.Service.Port,
 	}
@@ -250,7 +252,7 @@ func (c *QRTRConn) LocalAddr() net.Addr {
 
 func (c *QRTRConn) RemoteAddr() net.Addr {
 	return &SockAddr{
-		Family: unix.AF_QIPCRTR,
+		Family: AF_QIPCRTR,
 		Node:   c.Service.Node,
 		Port:   c.Service.Port,
 	}
