@@ -10,12 +10,12 @@ import (
 type Cmd string
 
 const (
-	CmdConnect      Cmd = "connect"
-	CmdDisconnect   Cmd = "disconnect"
-	CmdOpenLogical  Cmd = "openlogicalchannel"
-	CmdCloseLogical Cmd = "closelogicalchannel"
-	CmdTransmit     Cmd = "transmit"
-	CmdResponse     Cmd = "response"
+	CmdConnect      Cmd = "conn"
+	CmdDisconnect   Cmd = "disc"
+	CmdOpenLogical  Cmd = "opch"
+	CmdCloseLogical Cmd = "clch"
+	CmdTransmit     Cmd = "tran"
+	CmdResponse     Cmd = "resp"
 )
 
 type IPacketCmd interface {
@@ -119,11 +119,15 @@ func (p PacketConnect) GetSlot() uint8 {
 }
 
 func (p PacketCmd) String() string {
-	return fmt.Sprintf("Cmd: %s, Err: %s", p.GetCmd(), p.GetErr())
+	if p.GetErr() == "" {
+		return fmt.Sprintf("Cmd: %s", p.GetCmd())
+	} else {
+		return fmt.Sprintf("Cmd: %s, Err: %s", p.GetCmd(), p.GetErr())
+	}
 }
 
 func (p PacketBody) String() string {
-	return fmt.Sprintf("%s, Body(hex): %X", p.PacketCmd, p.GetBody())
+	return fmt.Sprintf("%s, Body(size): %4d, Body(hex): %X", p.PacketCmd, len(p.GetBody()), p.GetBody())
 }
 
 func (p PacketConnect) String() string {
