@@ -35,8 +35,8 @@ func (sp *SerialPort) setTermios(baudRate uint32) error {
 		return err
 	}
 	t := unix.Termios{
-		Ispeed: baudRate,
-		Ospeed: baudRate,
+		Ispeed: uint64(baudRate),
+		Ospeed: uint64(baudRate),
 	}
 	t.Iflag &^= unix.IGNBRK | unix.BRKINT | unix.PARMRK | unix.ISTRIP | unix.INLCR | unix.IGNCR | unix.ICRNL | unix.IXON
 	t.Oflag &^= unix.OPOST
